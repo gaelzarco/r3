@@ -1,15 +1,15 @@
 use postgres::{Client, NoTls};
-use potsgres::Error as PostgresError;
+use postgres::Error as PostgresError;
 use std::env;
 use std::io::{BufReader, Read, Write};
-use std::new::{TcpListener, TcpStream};
+use std::net::{TcpListener, TcpStream};
 
 #[macro_use]
 extern crate serde_derive;
 
 #[derive(Serialize, Deserialize)]
 struct User {
-    id: i32,
+    id: Option<i32>,
     name: String,
     email: String,
 }
@@ -56,6 +56,11 @@ fn handle_connection(mut stream: TcpStream) {
     match stream.read(&mut buffer) {
         OK(size) => {
             request.push_str(String::from_utf8_lossy(&buffer[..size]).as_ref());
+
+            let (status_line, content) = &*request {
+                r if r.starts_with("GET /api/rust/user") => (handle_get_user(r)),
+                _ => (NOT_FOUND.to_string(), String::from("404 NOT FOUND"))
+            };
         }
     }
 }
