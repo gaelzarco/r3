@@ -1,6 +1,8 @@
-use postgres::{Client, NoTls};
+use dotenv::dotenv;
+use server::ThreadPool;
+
 use postgres::Error as PostgresError;
-use std::env;
+use postgres::{Client, NoTls};
 use std::io::{BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 
@@ -14,34 +16,36 @@ struct User {
     email: String,
 }
 
-const DB_URL: &str = env!("DATABASE_URL");
-
 const OK_RESPONSE: &str = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, PUT, DELETE\r\nAccess-Control-Allow-Headers: Content-Type\r\n\r\n";
 const NOT_FOUND: &str = "HTTP/1.1 404 NOT FOUND\r\n\r\n";
 const INTERNAL_ERROR: &str = "HTTP/1.1 500 INTERNAL ERROR\r\n\r\n";
 
-const HOST: &str = "0.0.0.0";
-const PORT: &str = "8080";
-const ENDPOINT: String = HOST.to_owned() + ":" + PORT;
-
 fn main() {
-    if let Err(_) = create_database() {
+    dotenv().ok();
+    const HOST: &str = "0.0.0.0";
+    const PORT: &str = "8080";
+
+    let endpoint: String = HOST.to_owned() + ":" + PORT;
+
+    if create_database().is_err() {
         println!("Error setting database");
         return;
     }
 
     let listener =
-        TcpListener::bind(ENDPOINT.clone()).expect("Error binding {HOST} to port: {PORT}");
+        TcpListener::bind(endpoint.clone()).expect("Error binding {HOST} to port: {PORT}");
     println!("SERVER LISTENING PORT:8080");
+
+    let pool = ThreadPool::new(8);
 
     for stream in listener.incoming() {
         match stream {
-            Ok(stream) => {
+            Ok(stream) => pool.execute(|| {
                 handle_connection(stream);
-            }
-            Err(e) => {
+            }),
+            Err(e) => pool.execute(move || {
                 println!("Unable to connect: {}", e);
-            }
+            }),
         }
     }
 }
@@ -54,20 +58,28 @@ fn handle_connection(mut stream: TcpStream) {
     let mut request = String::new();
 
     match stream.read(&mut buffer) {
-        OK(size) => {
+        Ok(size) => {
             request.push_str(String::from_utf8_lossy(&buffer[..size]).as_ref());
 
-            let (status_line, content) = &*request {
-                r if r.starts_with("GET /api/rust/user") => (handle_get_user(r)),
-                _ => (NOT_FOUND.to_string(), String::from("404 NOT FOUND"))
+            let (status_line, content) = match &*request {
+                r if r.starts_with("GET /api/rust/") => (
+                    OK_RESPONSE.to_string(),
+                    String::from("Welcome to the R3 Rust API"),
+                ),
+                _ => (NOT_FOUND.to_string(), String::from("404 NOT FOUND")),
             };
+            stream
+                .write_all(format!("{}{}", status_line, content).as_bytes())
+                .unwrap();
         }
+        Err(e) => eprintln!("Unable to read stream: {}", e),
     }
 }
 
 fn create_database() -> Result<(), PostgresError> {
-    let mut client = Client::connect(DB_URL, NoTls)?;
-    client.batch_execute("CREATE EXTENSION pg_oauth IF NOT EXISTS");
+    let db_url: String = std::env::var("DATABASE_URL").unwrap_or_default();
+    println!("{db_url}");
+    let mut client = Client::connect(&db_url, NoTls)?;
     client.batch_execute(
         "
         CREATE TABLE IF NOT EXISTS users (
