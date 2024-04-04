@@ -1,6 +1,6 @@
-use dotenv::dotenv;
-use server::ThreadPool;
+use server::thread::ThreadPool;
 
+use dotenv::dotenv;
 use postgres::Error as PostgresError;
 use postgres::{Client, NoTls};
 use std::io::{BufReader, Read, Write};
@@ -27,11 +27,6 @@ fn main() {
 
     let endpoint: String = HOST.to_owned() + ":" + PORT;
 
-    if create_database().is_err() {
-        println!("Error setting database");
-        return;
-    }
-
     let listener =
         TcpListener::bind(endpoint.clone()).expect("Error binding {HOST} to port: {PORT}");
     println!("SERVER LISTENING PORT:8080");
@@ -57,6 +52,14 @@ fn handle_connection(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
     let mut request = String::new();
 
+    match std::env::var("DATABASE_ARGS") {
+        Ok(db_args) => match create_database(&db_args) {
+            Ok(_) => println!("Database connection successful."),
+            Err(err) => println!("Error setting up database {}", err),
+        },
+        Err(_) => eprintln!("DATBASE_ARGS environment variables is not set."),
+    }
+
     match stream.read(&mut buffer) {
         Ok(size) => {
             request.push_str(String::from_utf8_lossy(&buffer[..size]).as_ref());
@@ -76,10 +79,8 @@ fn handle_connection(mut stream: TcpStream) {
     }
 }
 
-fn create_database() -> Result<(), PostgresError> {
-    let db_url: String = std::env::var("DATABASE_URL").unwrap_or_default();
-    println!("{db_url}");
-    let mut client = Client::connect(&db_url, NoTls)?;
+fn create_database(db_args: &str) -> Result<(), PostgresError> {
+    let mut client = Client::connect(db_args, NoTls)?;
     client.batch_execute(
         "
         CREATE TABLE IF NOT EXISTS users (
