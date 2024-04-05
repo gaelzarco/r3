@@ -1,5 +1,6 @@
 use server::thread::ThreadPool;
 
+use core::panic;
 use dotenv::dotenv;
 use postgres::Error as PostgresError;
 use postgres::{Client, NoTls};
@@ -29,9 +30,17 @@ fn main() {
 
     let listener =
         TcpListener::bind(endpoint.clone()).expect("Error binding {HOST} to port: {PORT}");
-    println!("SERVER LISTENING PORT:8080");
+    println!("SERVER LISTENING {HOST}:{PORT}");
 
     let pool = ThreadPool::new(8);
+
+    match std::env::var("DATABASE_ARGS") {
+        Ok(db_args) => match create_database(&db_args) {
+            Ok(_) => println!("Database connection successful."),
+            Err(err) => println!("Error setting up database {}", err),
+        },
+        Err(_) => panic!("DATBASE_ARGS environment variables is not set."),
+    }
 
     for stream in listener.incoming() {
         match stream {
@@ -51,14 +60,6 @@ fn main() {
 fn handle_connection(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
     let mut request = String::new();
-
-    match std::env::var("DATABASE_ARGS") {
-        Ok(db_args) => match create_database(&db_args) {
-            Ok(_) => println!("Database connection successful."),
-            Err(err) => println!("Error setting up database {}", err),
-        },
-        Err(_) => eprintln!("DATBASE_ARGS environment variables is not set."),
-    }
 
     match stream.read(&mut buffer) {
         Ok(size) => {
@@ -81,14 +82,23 @@ fn handle_connection(mut stream: TcpStream) {
 
 fn create_database(db_args: &str) -> Result<(), PostgresError> {
     let mut client = Client::connect(db_args, NoTls)?;
-    client.batch_execute(
-        "
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR NOT NULL,
-            email VARCHAR NOT NULL
+
+    let create_query = r#"
+        CREATE TABLE IF NOT EXISTS "users" (
+            "id" VARCHAR(191) NOT NULL,
+            "email" VARCHAR(191) NOT NULL,
+            "bio" VARCHAR(500),
+            "userName" VARCHAR(20),
+            "name" VARCHAR(20),
+            "profileImageURL" VARCHAR(191),
+            PRIMARY KEY ("id"),
+            CONSTRAINT "users_email_key" UNIQUE ("email"),
+            CONSTRAINT "users_userName_key" UNIQUE ("userName")
         )
-    ",
-    )?;
-    Ok(())
+    "#;
+
+    match client.batch_execute(create_query) {
+        Ok(_) => Ok(()),
+        Err(err) => panic!("Error creating users database: {}", err),
+    }
 }
