@@ -20,11 +20,11 @@ impl Worker {
         let thread = thread::spawn(move || loop {
             let job = receiver
                 .lock()
-                .expect("Failed to acquire lock.")
+                .expect("ERR: Failed to acquire Mutex lock")
                 .recv()
-                .expect("Could not receive job to execute.");
+                .expect("ERR: Could not receive job to execute");
 
-            println!("Worker {id} got a job; Executing...");
+            println!("OK: Worker {id} got a job; Executing...");
 
             job();
         });
@@ -68,6 +68,8 @@ impl ThreadPool {
     {
         let job = Box::new(f);
 
-        self.sender.send(job).expect("Could not send job.");
+        self.sender
+            .send(job)
+            .expect("ERR: Could not send job to execute");
     }
 }
