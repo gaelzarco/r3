@@ -65,13 +65,11 @@ fn handle_connection(mut stream: TcpStream) {
             request.push_str(&String::from_utf8_lossy(&buffer[..size]));
 
             let (status_line, content) = match &*request {
-                r if r.starts_with("GET /api/rust/") => (
+                r if r.starts_with("GET /api/") => (
                     OK_RESPONSE.to_string(),
                     String::from("Welcome to the R3 Rust API"),
                 ),
-                r if r.starts_with("POST /api/auth/github") => {
-                    (OK_RESPONSE.to_string(), handle_github_login(r))
-                }
+                r if r.starts_with("POST /api/auth/github") => handle_github_login(r),
 
                 _ => (NOT_FOUND.to_string(), String::from("404 NOT FOUND")),
             };
@@ -111,24 +109,24 @@ fn create_database() -> Result<(), PostgresError> {
     }
 }
 
-fn get_request_body(req: &str) -> Result<User, serde_json::Error> {
-    serde_json::from_str(req.split("\r\n\r\n").last().unwrap_or_default())
-}
+// fn get_request_body(req: &str) -> Result<User, serde_json::Error> {
+//     serde_json::from_str(req.split("\r\n\r\n").last().unwrap_or_default())
+// }
 
-fn handle_github_login(req: &str) -> String {
+fn handle_github_login(req: &str) -> (String, String) {
     println!("OK: Received GitHub login request: \r\n{}", req);
 
-    match get_request_body(&req) {
-        Ok(user) => println!(
-            "OK: GitHub login request body successfully parsed: \r\n{:?}",
-            user
-        ),
-        Err(err) => panic!(
-            "ERR: GitHub login request body could not be parsed successfully {}",
-            err
-        ),
-    };
+    // match get_request_body(&req) {
+    //     Ok(user) => println!(
+    //         "OK: GitHub login request body successfully parsed: \r\n{:?}",
+    //         user
+    //     ),
+    //     Err(err) => panic!(
+    //         "ERR: GitHub login request body could not be parsed successfully {}",
+    //         err
+    //     ),
+    // };
 
-    req.to_string()
+    (OK_RESPONSE.to_string(), req.to_string())
     // Code to be inserted
 }

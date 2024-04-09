@@ -1,4 +1,15 @@
 services:
+  server:
+    container_name: r3_server
+    image: rust:latest
+    build:
+      context: ./server
+      dockerfile: rust.dockerfile
+      args:
+        DATABASE_ARGS: ${DATABASE_ARGS}
+      ports: 8080
+      depends_on:
+        - r3_db
   db:
     container_name: r3_db
     image: postgres:13
