@@ -109,23 +109,23 @@ fn create_database() -> Result<(), PostgresError> {
     }
 }
 
-// fn get_request_body(req: &str) -> Result<User, serde_json::Error> {
-//     serde_json::from_str(req.split("\r\n\r\n").last().unwrap_or_default())
-// }
+fn get_request_body(req: &str) -> Result<User, serde_json::Error> {
+    serde_json::from_str(req.split("\r\n\r\n").last().unwrap_or_default())
+}
 
 fn handle_github_login(req: &str) -> (String, String) {
     println!("OK: Received GitHub login request: \r\n{}", req);
 
-    // match get_request_body(&req) {
-    //     Ok(user) => println!(
-    //         "OK: GitHub login request body successfully parsed: \r\n{:?}",
-    //         user
-    //     ),
-    //     Err(err) => panic!(
-    //         "ERR: GitHub login request body could not be parsed successfully {}",
-    //         err
-    //     ),
-    // };
+    match get_request_body(&req) {
+        Ok(user) => println!(
+            "OK: GitHub login request body successfully parsed: \r\n{:?}",
+            user
+        ),
+        Err(err) => panic!(
+            "ERR: GitHub login request body could not be parsed successfully {}",
+            err
+        ),
+    };
 
     (OK_RESPONSE.to_string(), req.to_string())
     // Code to be inserted

@@ -1,15 +1,18 @@
 services:
   server:
     container_name: r3_server
-    image: rust:latest
+    image: fancescoxx/rustapp:latest
+    environment:
+      DATABASE_ARGS: ${DATABASE_ARGS}
     build:
       context: ./server
-      dockerfile: rust.dockerfile
+      dockerfile: rust.Dockerfile
       args:
         DATABASE_ARGS: ${DATABASE_ARGS}
-      ports: 8080
-      depends_on:
-        - r3_db
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
   db:
     container_name: r3_db
     image: postgres:13
