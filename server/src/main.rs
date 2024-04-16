@@ -30,15 +30,22 @@ fn main() {
 
     let endpoint: String = HOST.to_owned() + ":" + PORT;
 
-    let listener =
-        TcpListener::bind(endpoint.clone()).expect("ERR: binding {HOST} to port: {PORT} failed");
-    println!("GO: SERVER LISTENING {HOST}:{PORT}");
+    let listener = match TcpListener::bind(endpoint.clone()) {
+        Ok(ok) => {
+            println!("OK: SERVER LISTENING {HOST}:{PORT}");
+            ok
+        }
+        Err(err) => panic!(
+            "ERR: binding {} to port: {} failed.\r\nError: {}",
+            HOST, PORT, err
+        ),
+    };
 
     let pool = ThreadPool::new(8);
 
     match create_database() {
         Ok(_) => (),
-        Err(err) => println!("ERR: Database failed to create {}", err),
+        Err(err) => panic!("ERR: Database failed to create {}", err),
     };
 
     for stream in listener.incoming() {
