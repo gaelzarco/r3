@@ -1,7 +1,17 @@
 services:
+  client:
+    container_name: r3_client
+    image: node:latest
+    build: 
+      context: ./client
+      dockerfile: js.Dockerfile
+    ports:
+      - 5179:5179
+    depends_on:
+      - server
+      - db
   server:
     container_name: r3_server
-    image: fancescoxx/rustapp:latest
     environment:
       DATABASE_ARGS: ${DATABASE_ARGS}
     build:
