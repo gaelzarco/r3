@@ -12,7 +12,6 @@ COPY . .
 
 RUN bun run build
 
-EXPOSE 5179
+EXPOSE 4173
 
-# Command to serve the optimized build using serve
-CMD ["serve", "-s", "build", "-l", "5179"]
+CMD ["bun", "run", "preview", "--host"]

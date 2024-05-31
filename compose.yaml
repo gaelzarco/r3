@@ -1,12 +1,11 @@
 services:
   client:
     container_name: r3_client
-    image: node:latest
     build: 
       context: ./client
       dockerfile: js.Dockerfile
     ports:
-      - 5179:5179
+      - 4173:4173
     depends_on:
       - server
       - db
